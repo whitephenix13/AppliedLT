@@ -1,0 +1,1 @@
+Applied language technology assign 1
