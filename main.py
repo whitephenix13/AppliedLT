@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 DATA_DIR  = 'data/'
 
 #Loaded files
@@ -8,29 +10,56 @@ f_align = open(DATA_DIR + 'file.aligned', 'r')
 #phrase is the phrase as a string
 #alignment is a list of pairs as follow : [[0,0],[0,1],[1,2]] ...
 #The idea of the algorithm is to check if each word alone can be a phrase and to extend those phrase to get all possible combination
-def extractPhrases(phrase,alignments):
-    words = phrase.split()
+def extractPhrases(sentence_src,sentence_tgt,alignments):
+    words = sentence_src.split()
     currentPhrase = [] # The current small phrases that are being built
+    current_phrase_index = [] # the current small phrases index
     currentBoxes = [] # The corresponding boxes to the current phrases
 
     allPhrases=[] # A small phrase is defined by a phrase in which if you remove a word, it will no longer be a phrase
+
+    all_phrases_tgt = [] # all phrases in the target side
+
+    tgt_index2word = {}
+    words_tgt = sentence_tgt.split(" ")
+    for i, elem in enumerate(words_tgt):
+        tgt_index2word[i] = elem
+    print(tgt_index2word)
+    print(alignments)
+    print(sentence_src)
+
+    phrase_tgt = [None] * len(words_tgt)  # to generate phrase in the target side
+
     for word_ind in range(len(words)) :
         wordAlignments = findWordAlignments(word_ind,alignments)
         #Add a new box and a new phrase for the word aline
         currentBoxes.append([-1,-1,-1,-1])
         currentPhrase.append("")
+        current_phrase_index.append("")
         for i in range(len(currentBoxes)):
             if currentPhrase[i] == "":
                 currentPhrase[i] = words[word_ind]
+                current_phrase_index[i] = str(word_ind)
             else:
                 currentPhrase[i] += " " + words[word_ind]
+                current_phrase_index[i] += " " + str(word_ind)
 
             correct, newBox = checkCorrectPhrase(currentBoxes[i],word_ind,wordAlignments)
             if correct :
                 allPhrases.append(currentPhrase[i])
+
+                # getting the target side phrases
+                current_phrase_index_list = current_phrase_index[i].split(" ")
+                for cpi in current_phrase_index_list:
+                    word_alignments = findWordAlignments(int(cpi),alignements)
+                    for wa in word_alignments:
+                        phrase_tgt[wa[1]] = tgt_index2word[wa[1]]
+                all_phrases_tgt.append(" ".join([x for x in phrase_tgt if x != None]))
+                phrase_tgt = [None] * len(sentence_tgt)
+
             currentBoxes[i]= newBox
 
-    return allPhrases
+    return allPhrases, all_phrases_tgt
 #Check if a phrase is correct by looking if no words are aligned to the outside
 #newWordIndex: index of the new word in the phrase
 #alignement: list of pairs as follow : [[0,0],[0,1],[1,2]] ...
@@ -83,9 +112,11 @@ def computePhraseBox(prevBox, newAlignment):
     return box
 
 
-phrase = 'De minister van buitenlandse zaken brengt een bezoek aan Nederland vandaag'
+sentence_src = 'De minister van buitenlandse zaken brengt een bezoek aan Nederland vandaag'
+sentence_tgt = 'The Secretary of State visits The Netherlands today'
 alignements = [[0,0],[1,1],[2,2],[3,3],[4,3],[5,4],[6,4],[7,4],[8,4],[9,5],[9,6],[10,7]]
-print(extractPhrases(phrase,alignements))
+#print(extractPhrases(sentence_src,sentence_tgt,alignements))
+
 #Expect ['De', 'De minister', 'De minister van', 'De minister van buitenlandse zaken', 'De minister van buitenlandse zaken brengt een bezoek aan',
 #  'De minister van buitenlandse zaken brengt een bezoek aan Nederland',
 # 'De minister van buitenlandse zaken brengt een bezoek aan Nederland vandaag',
@@ -96,9 +127,10 @@ print(extractPhrases(phrase,alignements))
 # 'buitenlandse zaken brengt een bezoek aan Nederland', 'buitenlandse zaken brengt een bezoek aan Nederland vandaag', 'brengt een bezoek aan',
 # 'brengt een bezoek aan Nederland', 'brengt een bezoek aan Nederland vandaag', 'Nederland', 'Nederland vandaag', 'vandaag']
 
-phrase = 'a b c' #mapped to a1 b1 c1 d1 as followed
+sentence_src = 'a b c' #mapped to a1 b1 c1 d1 as followed
+sentence_tgt = 'a1 b1 c1 a2'
 alignements = [[0,0],[1,1],[2,2],[0,3]]
-print(extractPhrases(phrase,alignements))
+print(extractPhrases(sentence_src,sentence_tgt,alignements))
 
 #test with today(beginning) and vandaag(end)
 #Problem :      a1   b1   c1   a2
@@ -106,3 +138,34 @@ print(extractPhrases(phrase,alignements))
 #            b       .
 #            c           .
 #Desired output : b, c, bc, abc
+
+
+### Task 1, find the frequency of the phrases ###
+phrases_src_given_tgt_counts = defaultdict(lambda : defaultdict(float))
+phrases_tgt_given_src_counts = defaultdict(lambda : defaultdict(float))
+phrases_src_counts = defaultdict(float)
+phrases_tgt_counts = defaultdict(float)
+
+for sentence_en, sentence_de, line_aligned in zip(f_en, f_de, f_align):
+    alignments = []
+    alignments_temp = line_aligned.replace("\n","").split(" ")
+    for al in alignments_temp:
+        alignments.append(al.split("-"))
+    phrases_src, phrases_tgt = extractPhrases(sentence_de.replace("\n",""), sentence_en.replace("\n",""), alignments)
+    for p_src, p_tgt in zip(phrases_src, phrases_tgt):
+        phrases_src_given_tgt_counts[p_src][p_tgt] += 1.0
+        phrases_tgt_given_src_counts[p_tgt][p_src] += 1.0
+        phrases_tgt_counts[p_tgt] += 1.0
+        phrases_src_counts[p_src] += 1.0
+
+### Task 2, find p(f|e) and p(e|f)
+pfe = defaultdict(lambda : defaultdict(float))
+pef = defaultdict(lambda : defaultdict(float))
+# p(e|f)
+for key in phrases_src_given_tgt_counts:
+    for key2 in phrases_src_given_tgt_counts[key]:
+        pef[key][key2] = phrases_src_given_tgt_counts[key][key2] / phrases_src_counts[key]
+# p(f|e)
+for key in phrases_tgt_given_src_counts:
+    for key2 in phrases_tgt_given_src_counts[key]:
+        pef[key][key2] = phrases_tgt_given_src_counts[key][key2] / phrases_tgt_counts[key]
