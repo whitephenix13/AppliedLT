@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 DATA_DIR  = 'data/'
-TEST = False
+TEST = True
 #Loaded files
 filename = 'file'
 if(TEST):
@@ -104,6 +104,26 @@ def computePhraseBox(prevBox, newAlignment):
                 box[3] = y
     return box
 
+def writeResults(filename,source_text, target_text, phrases_src_given_tgt_counts ):
+    f = open(filename, 'w')
+    f.write("f   |||e    |||p(f|e)      p(e|f) l(f|e) l(e|f) |||freq(f) freq(e) freq(f, e)\n")
+    for source_phrase, targetToCountDict in phrases_src_given_tgt_counts.items():
+        freq_f = 0
+        print(str(source_phrase) +" "+ str(phrases_src_given_tgt_counts[source_phrase]))
+        #Compute frequencies
+        for key, value in phrases_src_given_tgt_counts[source_phrase].items():
+            freq_f+=value
+        for target_phrase, freq_fe in targetToCountDict.items():
+            freq_e = 0
+            for key, value in phrases_src_given_tgt_counts.items():
+                if phrases_src_given_tgt_counts[key][target_phrase]:
+                    freq_e+=phrases_src_given_tgt_counts[key][target_phrase]
+            # f   |||e    |||p(f|e)      p(e|f) l(f|e) l(e|f) |||freq(f) freq(e) freq(f, e)
+            f.write(str(source_phrase) \
+                    +" ||| " + str(target_phrase)\
+                    +" ||| "+str(freq_fe/freq_e)+ " "+str(freq_fe/freq_f)\
+                    +" ||| "+ str(freq_f)+ " "+ str(freq_e)+ " "+ str(freq_fe)+"\n" )
+    f.close()
 
 sentence_src = 'De minister van buitenlandse zaken brengt een bezoek aan Nederland vandaag'
 sentence_tgt = 'The Secretary of State visits The Netherlands today'
@@ -135,7 +155,9 @@ myalignements = [[0,0],[1,1],[2,2],[0,3]]
 
 ### Task 1, find the frequency of the phrases ###
 phrases_src_given_tgt_counts = defaultdict(lambda : defaultdict(float))
+#TODO: also delete ?
 phrases_tgt_given_src_counts = defaultdict(lambda : defaultdict(float))
+#TODO: delete ?
 phrases_src_counts = defaultdict(float)
 phrases_tgt_counts = defaultdict(float)
 
@@ -155,6 +177,11 @@ for sentence_en, sentence_de, line_aligned in zip(f_en, f_de, f_align):
         phrases_tgt_counts[p_tgt] += 1.0
         phrases_src_counts[p_src] += 1.0
     count+=1
+
+#TODO: simplify above code by removing variables and defining a main
+writeResults("test.txt",f_de,f_en, phrases_src_given_tgt_counts)
+
+
 
 ### Task 2, find p(f|e) and p(e|f)
 pfe = defaultdict(lambda : defaultdict(float))
