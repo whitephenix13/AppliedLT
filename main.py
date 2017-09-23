@@ -114,15 +114,16 @@ def writeResults(filename,source_text, target_text, phrases_src_given_tgt_counts
         for key, value in phrases_src_given_tgt_counts[source_phrase].items():
             freq_f+=value
         for target_phrase, freq_fe in targetToCountDict.items():
-            freq_e = 0
-            for key, value in phrases_src_given_tgt_counts.items():
-                if phrases_src_given_tgt_counts[key][target_phrase]:
-                    freq_e+=phrases_src_given_tgt_counts[key][target_phrase]
-            # f   |||e    |||p(f|e)      p(e|f) l(f|e) l(e|f) |||freq(f) freq(e) freq(f, e)
-            f.write(str(source_phrase) \
-                    +" ||| " + str(target_phrase)\
-                    +" ||| "+str(freq_fe/freq_e)+ " "+str(freq_fe/freq_f)\
-                    +" ||| "+ str(freq_f)+ " "+ str(freq_e)+ " "+ str(freq_fe)+"\n" )
+            if(freq_fe >0):
+                freq_e = 0
+                for key, value in phrases_src_given_tgt_counts.items():
+                    if phrases_src_given_tgt_counts[key][target_phrase]:
+                        freq_e+=phrases_src_given_tgt_counts[key][target_phrase]
+                # f   |||e    |||p(f|e)      p(e|f) l(f|e) l(e|f) |||freq(f) freq(e) freq(f, e)
+                f.write(str(source_phrase) \
+                        +" ||| " + str(target_phrase)\
+                        +" ||| "+str(freq_fe/freq_e)+ " "+str(freq_fe/freq_f)\
+                        +" ||| "+ str(freq_f)+ " "+ str(freq_e)+ " "+ str(freq_fe)+"\n" )
     f.close()
 
 sentence_src = 'De minister van buitenlandse zaken brengt een bezoek aan Nederland vandaag'
@@ -156,10 +157,10 @@ myalignements = [[0,0],[1,1],[2,2],[0,3]]
 ### Task 1, find the frequency of the phrases ###
 phrases_src_given_tgt_counts = defaultdict(lambda : defaultdict(float))
 #TODO: also delete ?
-phrases_tgt_given_src_counts = defaultdict(lambda : defaultdict(float))
+#phrases_tgt_given_src_counts = defaultdict(lambda : defaultdict(float))
 #TODO: delete ?
-phrases_src_counts = defaultdict(float)
-phrases_tgt_counts = defaultdict(float)
+#phrases_src_counts = defaultdict(float)
+#phrases_tgt_counts = defaultdict(float)
 
 count = 0
 for sentence_en, sentence_de, line_aligned in zip(f_en, f_de, f_align):
@@ -173,9 +174,9 @@ for sentence_en, sentence_de, line_aligned in zip(f_en, f_de, f_align):
     phrases_src, phrases_tgt = extractPhrases(sentence_de.replace("\n",""), sentence_en.replace("\n",""), alignments)
     for p_src, p_tgt in zip(phrases_src, phrases_tgt):
         phrases_src_given_tgt_counts[p_src][p_tgt] += 1.0
-        phrases_tgt_given_src_counts[p_tgt][p_src] += 1.0
-        phrases_tgt_counts[p_tgt] += 1.0
-        phrases_src_counts[p_src] += 1.0
+        #phrases_tgt_given_src_counts[p_tgt][p_src] += 1.0
+        #phrases_tgt_counts[p_tgt] += 1.0
+        #phrases_src_counts[p_src] += 1.0
     count+=1
 
 #TODO: simplify above code by removing variables and defining a main
@@ -184,15 +185,15 @@ writeResults("test.txt",f_de,f_en, phrases_src_given_tgt_counts)
 
 
 ### Task 2, find p(f|e) and p(e|f)
-pfe = defaultdict(lambda : defaultdict(float))
-pef = defaultdict(lambda : defaultdict(float))
+#pfe = defaultdict(lambda : defaultdict(float))
+#pef = defaultdict(lambda : defaultdict(float))
 # p(e|f)
-for key in phrases_src_given_tgt_counts:
-    for key2 in phrases_src_given_tgt_counts[key]:
-        pef[key][key2] = phrases_src_given_tgt_counts[key][key2] / phrases_src_counts[key]
+#for key in phrases_src_given_tgt_counts:
+#    for key2 in phrases_src_given_tgt_counts[key]:
+#        pef[key][key2] = phrases_src_given_tgt_counts[key][key2] / phrases_src_counts[key]
 # p(f|e)
-for key in phrases_tgt_given_src_counts:
-    for key2 in phrases_tgt_given_src_counts[key]:
-        pef[key][key2] = phrases_tgt_given_src_counts[key][key2] / phrases_tgt_counts[key]
+#for key in phrases_tgt_given_src_counts:
+#    for key2 in phrases_tgt_given_src_counts[key]:
+#        pef[key][key2] = phrases_tgt_given_src_counts[key][key2] / phrases_tgt_counts[key]
 
 print('done')
