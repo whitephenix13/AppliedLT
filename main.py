@@ -1,4 +1,9 @@
 from collections import defaultdict
+import sys
+
+python3Code = False;
+if (sys.version_info > (3, 0)):
+    python3Code = True
 
 DATA_DIR  = 'data/'
 TEST = False
@@ -13,9 +18,7 @@ f_align = open(DATA_DIR +filename+'.aligned', 'r')
 #phrase is the phrase as a string
 #alignment is a list of pairs as follow : [[0,0],[0,1],[1,2]] ...
 #The idea of the algorithm is to check if each word alone can be a phrase and to extend those phrase to get all possible combination
-def extractPhrases(sentence_src,sentence_tgt,alignments,words_src_given_tgt,words_tgt_given_src):
-    words = sentence_src.split()
-    words_tgt = sentence_tgt.split()
+def extractPhrases(words,words_tgt,alignments,words_src_given_tgt,words_tgt_given_src):
 
     currentPhrase = [] # The current small phrases that are being built
     currentBoxes = [] # The corresponding boxes to the current phrases
@@ -196,9 +199,12 @@ for sentence_en, sentence_de, line_aligned in zip(f_en, f_de, f_align):
         words_tgt_given_src_counts[words_en[alig[1]]][words_de[alig[0]]] += 1.0
 
 def normalize(d, target=1.0):
-   raw = sum(d.values())
-   factor = target/raw
-   return {key:value*factor for key,value in d.iteritems()}
+    raw = sum(d.values())
+    factor = target/raw
+    if python3Code:
+        return {key: value * factor for key, value in list(d.items())}
+    else:
+        return {key:value*factor for key,value in d.iteritems()}
 
 for key in words_src_given_tgt_counts:
     words_src_given_tgt_counts[key] = normalize(words_src_given_tgt_counts[key])
@@ -237,21 +243,25 @@ count = 0
 for sentence_en, sentence_de, line_aligned in zip(f_en, f_de, f_align):
     if count%1000 == 0:
         print('count: '+ str(count))
-    alignments = []
-    alignments_temp = line_aligned.replace("\n","").split(" ")
-    for al in alignments_temp:
-        alignments.append(al.split("-"))
-    alignments=[list(map(int,pair)) for pair in alignments]
-    ### extract phrases and count phrases occurences ###
-    phrases_src, phrases_tgt, lexical_src_given_tgt, lexical_tgt_given_src = extractPhrases(sentence_de.replace("\n",""), sentence_en.replace("\n",""), alignments, words_src_given_tgt_counts, words_tgt_given_src_counts)
-    for p_src, p_tgt, l_src_tgt, l_tgt_src in zip(phrases_src, phrases_tgt, lexical_src_given_tgt, lexical_tgt_given_src):
-        phrases_src_given_tgt_counts[p_src][p_tgt] += 1.0
-        lexical_src_given_tgt_prob[p_src][p_tgt].append(l_src_tgt)
-        lexical_tgt_given_src_prob[p_tgt][p_src].append(l_tgt_src)
-        #phrases_tgt_given_src_counts[p_tgt][p_src] += 1.0
-        #phrases_tgt_counts[p_tgt] += 1.0
-        #phrases_src_counts[p_src] += 1.0
+    words_de = sentence_de.replace("\n","").split(" ")
+    words_en = sentence_en.replace("\n","").split(" ")
+    if not len(words_de) > 5 and not len(words_en) > 5:
+        alignments = []
+        alignments_temp = line_aligned.replace("\n","").split(" ")
+        for al in alignments_temp:
+            alignments.append(al.split("-"))
+        alignments=[list(map(int,pair)) for pair in alignments]
+        ### extract phrases and count phrases occurences ###
+        phrases_src, phrases_tgt, lexical_src_given_tgt, lexical_tgt_given_src = extractPhrases(words_de, words_en, alignments, words_src_given_tgt_counts, words_tgt_given_src_counts)
+        for p_src, p_tgt, l_src_tgt, l_tgt_src in zip(phrases_src, phrases_tgt, lexical_src_given_tgt, lexical_tgt_given_src):
+            phrases_src_given_tgt_counts[p_src][p_tgt] += 1.0
+            lexical_src_given_tgt_prob[p_src][p_tgt].append(l_src_tgt)
+            lexical_tgt_given_src_prob[p_tgt][p_src].append(l_tgt_src)
+            #phrases_tgt_given_src_counts[p_tgt][p_src] += 1.0
+            #phrases_tgt_counts[p_tgt] += 1.0
+            #phrases_src_counts[p_src] += 1.0
     count+=1
+print(count)
 
 #TODO: simplify above code by removing variables and defining a main
 writeResults("test_big.txt", phrases_src_given_tgt_counts, lexical_src_given_tgt_prob, lexical_tgt_given_src_prob)
