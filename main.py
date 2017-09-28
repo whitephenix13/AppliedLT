@@ -13,9 +13,9 @@ TEST = False
 filename = 'file'
 if(TEST):
     filename = 'test'
-f_en = open(DATA_DIR+filename +'.en', 'r')
-f_de = open(DATA_DIR+filename+'.de', 'r')
-f_align = open(DATA_DIR +filename+'.aligned', 'r')
+GLOBAL_f_en = open(DATA_DIR+filename +'.en', 'r')
+GLOBAL_f_de = open(DATA_DIR+filename+'.de', 'r')
+GLOBAL_f_align = open(DATA_DIR +filename+'.aligned', 'r')
 
 #phrase is the phrase as a string
 #alignment is a list of pairs as follow : [[0,0],[0,1],[1,2]] ...
@@ -47,7 +47,6 @@ def extractPhrases(words,words_tgt,alignments,words_src_given_tgt,words_tgt_give
                 currentPhrase[i] += " " + words[word_ind]
             correct, newBox = checkCorrectPhrase(currentBoxes[i],wordAlignments,alignments)
             if correct :
-                print(str(words[word_ind]) +" => "+ str(currentPhrase[i]))
                 phrase_tgt = [None] * len(words_tgt)  # to generate phrase in the target side
 
                 allPhrases.append(currentPhrase[i])
@@ -84,12 +83,6 @@ def extractPhrases(words,words_tgt,alignments,words_src_given_tgt,words_tgt_give
                             temp2 += words_tgt_given_src[words_tgt[wa[1]]][words[wa[0]]]
                         temp2 /= len(word_alignments2)
                         lexval_temp2 *= temp2
-
-                    # temp2 = 0
-                    # for wa in word_alignments2:
-                    #     temp2 += words_tgt_given_src[words_tgt[wa[1]]][words[wa[0]]]
-                    # temp2 /= len(word_alignments2)
-                    # lexval_temp2 *= temp2
 
                 lexical_src_given_tgt.append(lexval_temp)
                 lexical_tgt_given_src.append(lexval_temp2)
@@ -147,21 +140,20 @@ def computePhraseBox(prevBox, newAlignment):
                 box[3] = y
     return box
 
-def writeResults(filename, phrases_src_given_tgt_counts, lexical_src_given_tgt, lexical_tgt_given_src ):
+def writeResults(filename, _phrases_src_given_tgt_counts, lexical_src_given_tgt, lexical_tgt_given_src ):
     f = open(filename, 'w')
     f.write("f ||| e ||| p(f|e) p(e|f) l(f|e) l(e|f) ||| freq(f) freq(e) freq(f, e)\n")
-    for source_phrase, targetToCountDict in phrases_src_given_tgt_counts.items():
+    for source_phrase, targetToCountDict in _phrases_src_given_tgt_counts.items():
         freq_f = 0
-        #print(str(source_phrase) +" "+ str(phrases_src_given_tgt_counts[source_phrase]))
         #Compute frequencies
-        for key, value in phrases_src_given_tgt_counts[source_phrase].items():
+        for key, value in _phrases_src_given_tgt_counts[source_phrase].items():
             freq_f+=value
         for target_phrase, freq_fe in targetToCountDict.items():
             if(freq_fe >0):
                 freq_e = 0
-                for key, value in phrases_src_given_tgt_counts.items():
-                    if phrases_src_given_tgt_counts[key][target_phrase]:
-                        freq_e+=phrases_src_given_tgt_counts[key][target_phrase]
+                for key, value in _phrases_src_given_tgt_counts.items():
+                    if _phrases_src_given_tgt_counts[key][target_phrase]:
+                        freq_e+=_phrases_src_given_tgt_counts[key][target_phrase]
                 lef = lexical_src_given_tgt[source_phrase][target_phrase]
                 lfe = lexical_tgt_given_src[target_phrase][source_phrase]
                 # f   |||e    |||p(f|e)      p(e|f) l(f|e) l(e|f) |||freq(f) freq(e) freq(f, e)
@@ -171,27 +163,18 @@ def writeResults(filename, phrases_src_given_tgt_counts, lexical_src_given_tgt, 
                         +" ||| "+ str(freq_f)+ " "+ str(freq_e)+ " "+ str(freq_fe)+"\n" )
     f.close()
 
-sentence_src = 'De minister van buitenlandse zaken brengt een bezoek aan Nederland vandaag'
-sentence_tgt = 'The Secretary of State visits The Netherlands today'
-myalignements = [[0,0],[1,1],[2,2],[3,3],[4,3],[5,4],[6,4],[7,4],[8,4],[9,5],[9,6],[10,7]]
-#print(extractPhrases(sentence_src,sentence_tgt,myalignements))
+############################            MAIN             ###########################################################################
 
-#Expect ['De', 'De minister', 'De minister van', 'De minister van buitenlandse zaken', 'De minister van buitenlandse zaken brengt een bezoek aan',
-#  'De minister van buitenlandse zaken brengt een bezoek aan Nederland',
-# 'De minister van buitenlandse zaken brengt een bezoek aan Nederland vandaag',
-# 'minister', 'minister van', 'minister van buitenlandse zaken', 'minister van buitenlandse zaken brengt een bezoek aan',
-# 'minister van buitenlandse zaken brengt een bezoek aan Nederland', 'minister van buitenlandse zaken brengt een bezoek aan Nederland vandaag',
-# 'van', 'van buitenlandse zaken', 'van buitenlandse zaken brengt een bezoek aan', 'van buitenlandse zaken brengt een bezoek aan Nederland',
-# 'van buitenlandse zaken brengt een bezoek aan Nederland vandaag', 'buitenlandse zaken', 'buitenlandse zaken brengt een bezoek aan',
-# 'buitenlandse zaken brengt een bezoek aan Nederland', 'buitenlandse zaken brengt een bezoek aan Nederland vandaag', 'brengt een bezoek aan',
-# 'brengt een bezoek aan Nederland', 'brengt een bezoek aan Nederland vandaag', 'Nederland', 'Nederland vandaag', 'vandaag']
 
 ### count word occurences ###
-words_src_given_tgt_counts = defaultdict(lambda : defaultdict(float))
-words_tgt_given_src_counts = defaultdict(lambda : defaultdict(float))
-for sentence_en, sentence_de, line_aligned in zip(f_en, f_de, f_align):
+GLOBAL_words_src_given_tgt_counts = defaultdict(lambda : defaultdict(float))
+GLOBAL_words_tgt_given_src_counts = defaultdict(lambda : defaultdict(float))
+for sentence_en, sentence_de, line_aligned in zip(GLOBAL_f_en, GLOBAL_f_de, GLOBAL_f_align):
     words_de = sentence_de.replace("\n", "").split()
+    words_de = list(filter(lambda x: x != '', words_de))
     words_en = sentence_en.replace("\n", "").split()
+    words_en = list(filter(lambda x: x != '', words_en))
+
     if not len(words_de) > MAX_SENTENCE_LENGTH and not len(words_en) > MAX_SENTENCE_LENGTH:
         alignments = []
         alignments_temp = line_aligned.replace("\n","").split(" ")
@@ -199,8 +182,8 @@ for sentence_en, sentence_de, line_aligned in zip(f_en, f_de, f_align):
             alignments.append(al.split("-"))
         alignments=[list(map(int,pair)) for pair in alignments]
         for alig in alignments:
-            words_src_given_tgt_counts[words_de[alig[0]]][words_en[alig[1]]] += 1.0
-            words_tgt_given_src_counts[words_en[alig[1]]][words_de[alig[0]]] += 1.0
+            GLOBAL_words_src_given_tgt_counts[words_de[alig[0]]][words_en[alig[1]]] += 1.0
+            GLOBAL_words_tgt_given_src_counts[words_en[alig[1]]][words_de[alig[0]]] += 1.0
 
 def normalize(d, target=1.0):
     raw = sum(d.values())
@@ -210,74 +193,57 @@ def normalize(d, target=1.0):
     else:
         return {key:value*factor for key,value in d.iteritems()}
 
-for key in words_src_given_tgt_counts:
-    words_src_given_tgt_counts[key] = normalize(words_src_given_tgt_counts[key])
-for key in words_tgt_given_src_counts:
-    words_tgt_given_src_counts[key] = normalize(words_tgt_given_src_counts[key])
+#Normalize words co-occurence (for lexical)
+for key in GLOBAL_words_src_given_tgt_counts:
+    GLOBAL_words_src_given_tgt_counts[key] = normalize(GLOBAL_words_src_given_tgt_counts[key])
+for key in GLOBAL_words_tgt_given_src_counts:
+    GLOBAL_words_tgt_given_src_counts[key] = normalize(GLOBAL_words_tgt_given_src_counts[key])
 
-#sentence_src = 'a b c' #mapped to a1 b1 c1 d1 as followed
-#sentence_tgt = 'a1 b1 c1 a2'
-#myalignements = [[0,0],[1,1],[2,2],[0,3]]
-#print(words_src_given_tgt_prob)
-#print(words_tgt_given_src_prob)
-#print(extractPhrases(sentence_src,sentence_tgt,myalignements,words_src_given_tgt_prob,words_tgt_given_src_prob))
 
-#test with today(beginning) and vandaag(end)
-#Problem :      a1   b1   c1   a2
-#            a  .              .
-#            b       .
-#            c           .
-#Desired output : b, c, bc, abc
+GLOBAL_phrases_src_given_tgt_counts = defaultdict(lambda : defaultdict(float))
+GLOBAL_lexical_src_given_tgt_prob = defaultdict(lambda : defaultdict(list))
+GLOBAL_lexical_tgt_given_src_prob = defaultdict(lambda : defaultdict(list))
 
-### Task 1, find the frequency of the phrases ###
-phrases_src_given_tgt_counts = defaultdict(lambda : defaultdict(float))
-lexical_src_given_tgt_prob = defaultdict(lambda : defaultdict(list))
-lexical_tgt_given_src_prob = defaultdict(lambda : defaultdict(list))
-#TODO: also delete ?
-#phrases_tgt_given_src_counts = defaultdict(lambda : defaultdict(float))
-#TODO: delete ?
-#phrases_src_counts = defaultdict(float)
-#phrases_tgt_counts = defaultdict(float)
+#Reset the files so that they can be read again
+GLOBAL_f_en.seek(0)
+GLOBAL_f_de.seek(0)
+GLOBAL_f_align.seek(0)
 
-f_en = open(DATA_DIR+filename +'.en', 'r')
-f_de = open(DATA_DIR+filename+'.de', 'r')
-f_align = open(DATA_DIR +filename+'.aligned', 'r')
+#Counter to see the number of iteration
+GLOBAL_count = 0
+#Actual data used: filtered by MAX_SENTENCE_LENGTH
+GLOBAL_f_en_s = open(DATA_DIR +filename+'_simp.en', 'w')
+GLOBAL_f_de_s = open(DATA_DIR +filename+'_simp.de', 'w')
+GLOBAL_f_align_s = open(DATA_DIR +filename+'_simp.aligned', 'w')
 
-count = 0
-f_en_s = open(DATA_DIR +filename+'_simp.en', 'w')
-f_de_s = open(DATA_DIR +filename+'_simp.de', 'w')
-f_align_s = open(DATA_DIR +filename+'_simp.aligned', 'w')
 
-for sentence_en, sentence_de, line_aligned in zip(f_en, f_de, f_align):
-    if count%1000 == 0:
-        print('count: '+ str(count))
+#Main loop: extract phrases and count
+for sentence_en, sentence_de, line_aligned in zip(GLOBAL_f_en, GLOBAL_f_de, GLOBAL_f_align):
+    if GLOBAL_count%1000 == 0:
+        print('count: '+ str(GLOBAL_count))
     words_de = sentence_de.replace("\n","").split(" ")
     words_de = list(filter(lambda x: x != '', words_de))
     words_en = sentence_en.replace("\n","").split(" ")
     words_en = list(filter(lambda x: x != '', words_en))
     if not len(words_de) > MAX_SENTENCE_LENGTH and not len(words_en) > MAX_SENTENCE_LENGTH:
-        f_en_s.write(sentence_en)
-        f_de_s.write(sentence_de)
-        f_align_s.write(line_aligned)
+        GLOBAL_f_en_s.write(sentence_en)
+        GLOBAL_f_de_s.write(sentence_de)
+        GLOBAL_f_align_s.write(line_aligned)
         alignments = []
         alignments_temp = line_aligned.replace("\n","").split(" ")
         for al in alignments_temp:
             alignments.append(al.split("-"))
         alignments=[list(map(int,pair)) for pair in alignments]
         ### extract phrases and count phrases occurences ###
-        phrases_src, phrases_tgt, lexical_src_given_tgt, lexical_tgt_given_src = extractPhrases(words_de, words_en, alignments, words_src_given_tgt_counts, words_tgt_given_src_counts)
+        phrases_src, phrases_tgt, lexical_src_given_tgt, lexical_tgt_given_src = extractPhrases(words_de, words_en, alignments,\
+                    GLOBAL_words_src_given_tgt_counts, GLOBAL_words_tgt_given_src_counts)
         for p_src, p_tgt, l_src_tgt, l_tgt_src in zip(phrases_src, phrases_tgt, lexical_src_given_tgt, lexical_tgt_given_src):
-            phrases_src_given_tgt_counts[p_src][p_tgt] += 1.0
-            lexical_src_given_tgt_prob[p_src][p_tgt].append(l_src_tgt)
-            lexical_tgt_given_src_prob[p_tgt][p_src].append(l_tgt_src)
-            #phrases_tgt_given_src_counts[p_tgt][p_src] += 1.0
-            #phrases_tgt_counts[p_tgt] += 1.0
-            #phrases_src_counts[p_src] += 1.0
-    count+=1
-print(count)
+            GLOBAL_phrases_src_given_tgt_counts[p_src][p_tgt] += 1.0
+            GLOBAL_lexical_src_given_tgt_prob[p_src][p_tgt].append(l_src_tgt)
+            GLOBAL_lexical_tgt_given_src_prob[p_tgt][p_src].append(l_tgt_src)
+    GLOBAL_count+=1
+print(GLOBAL_count)
 
-#TODO: simplify above code by removing variables and defining a main
-writeResults("test_big.txt", phrases_src_given_tgt_counts, lexical_src_given_tgt_prob, lexical_tgt_given_src_prob)
-#print(words_src_given_tgt_prob)
+writeResults("test_big.txt", GLOBAL_phrases_src_given_tgt_counts, GLOBAL_lexical_src_given_tgt_prob, GLOBAL_lexical_tgt_given_src_prob)
 print('done')
 
